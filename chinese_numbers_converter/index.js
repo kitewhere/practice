@@ -1,4 +1,8 @@
-"use Strict";
+/**
+ *  @fileOverview numToChinese
+ */
+
+import Maybe from "./maybe";
 
 /**
  *  中文字典
@@ -8,26 +12,7 @@
 const Dictionary = {
   digits: ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"],
   units: ["十", "百", "千"],
-  quots: [
-    "万",
-    "亿",
-    "兆",
-    "京",
-    "垓",
-    "秭",
-    "穰",
-    "沟",
-    "涧",
-    "正",
-    "载",
-    "极",
-    "恒河沙",
-    "阿僧祗",
-    "那由他",
-    "不可思议",
-    "无量",
-    "大数"
-  ]
+  quots: ["万", "亿", "兆", "京", "垓", "秭", "穰", "沟", "涧", "正", "载", "极", "恒河沙", "阿僧祗", "那由他", "不可思议", "无量", "大数"]
 };
 
 /**
@@ -64,14 +49,35 @@ const reverseIndex = length => index => length - index - 1;
  *  @param  {function}   indexChanger  坐标转换函数,决定矩阵如何排列
  *  @return {function} 根据下标技术含量坐标的函数
  */
-const matrixer = (cols, indexChanger) => ([num, index]) => {
+const matrixer = (cols, indexChanger) => ([num, index, queue]) => {
   const newIndex = indexChanger ? indexChanger(index) : index;
   return {
     num,
     index,
     row: Math.trunc(newIndex / cols),
-    col: newIndex % cols
+    col: newIndex % cols,
+    queue
   };
+};
+
+
+/**
+ *  验证权位是否都是0
+ *
+ *  @param  {number} length 权位的个数
+ *  @return {function}      验证函数如果成功返回 maybe.just, 否则返回 maybe.nothing
+ */
+const checkSection = length => ({ num, index, row, col, queue }) => {
+  if (num === "0" && col === 0) {
+    for (let i = 1; i < length; i++) {
+      if (queue[index - i] !== "0") {
+        return Maybe.Just({ num, index, row, col });
+      }
+    }
+
+    return Maybe.Nothing();
+  }
+  return Maybe.Just({ num, index, row, col });
 };
 
 /**
@@ -82,16 +88,17 @@ const matrixer = (cols, indexChanger) => ([num, index]) => {
  *  @param  {array} options.quots  节权位
  *  @return {function}    根据数字,下标,矩阵坐标翻译中文
  */
-const translator = ({ digits, units, quots }) => ({ num, index, row, col }) => {
-  const digit =
-    num === "0" || (num === "1" && index === 0 && col === 1) ? "" : digits[num];
-  const unit =
-    col === 0 ? quots[row - 1] || "" : num === "0" ? "" : units[col - 1];
-  return {
-    num,
-    text: digit + unit
-  };
-};
+const translator = ({ digits, units, quots }) => data =>
+  data.map(({ num, index, row, col }) => {
+    let piece =
+      num === "0" || (num === "1" && index === 0 && col === 1)
+        ? ""
+        : digits[num];
+    piece +=
+      col === 0 ? quots[row - 1] || "" : num === "0" ? "" : units[col - 1];
+
+    return { num, piece };
+  });
 
 /**
  *  组装每个数字对应的中文
@@ -104,10 +111,15 @@ const translator = ({ digits, units, quots }) => ({ num, index, row, col }) => {
  *  @param  {string} options.text 当前的中文
  *  @return {object}              text 中文结果
  */
-const assembler = zeroChar => ({ total, zero }, { num, text }) => ({
-  total: (num === "0" ? (zero ? text : text || zeroChar) : text) + total,
-  zero: num === "0" ? zero || true : false
-});
+const assembler = zeroChar => ({ text, zero }, data) => {
+  if (data.isNothing()) return { text, zero };
+
+  const { num, piece } = data.get();
+  return {
+    text: (num === "0" ? (zero ? piece : piece || zeroChar) : piece) + text,
+    zero: num === "0" ? true : false
+  };
+};
 
 /**
  * 转换阿拉伯数字到中文
@@ -120,10 +132,16 @@ const assembler = zeroChar => ({ total, zero }, { num, text }) => ({
  */
 const numToChinese = numbers =>
   bindTo(numbers)(Array.prototype.map)(
-    compose(matrixer(4, reverseIndex(numbers.length)), translator(Dictionary))
+    compose(
+      matrixer(4, reverseIndex(numbers.length)),
+      checkSection(4),
+      translator(Dictionary)
+    )
   )
     .reverse()
-    .reduce(assembler(Dictionary["digits"][0]), { total: "", zero: true })
-    .total;
+    .reduce(assembler(Dictionary["digits"][0]), { text: "", zero: true });
+// .total;
 
-export default numToChinese;
+console.log(numToChinese("10000000040"));
+
+// export default numToChinese;
