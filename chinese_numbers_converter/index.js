@@ -103,12 +103,12 @@ const translator = ({ digits, units, quots }) => data =>
 /**
  *  组装每个数字对应的中文
  *  连续出现多个0 只保留一个‘零’
- *  十百千都为`0` 则丢弃`text`
+ *  十百千都为`0` 则丢弃`piece`
  *
- *  @param  {string} options.text 累加的中文
- *  @param  {bool}   options.zero 上一位是否为0
- *  @param  {number} options.num  当前的数字
- *  @param  {string} options.text 当前的中文
+ *  @param  {string} options.text  累加的中文
+ *  @param  {bool}   options.zero  上一位是否为0
+ *  @param  {number} options.num   当前的数字
+ *  @param  {string} options.piece 当前的中文
  *  @return {object}              text 中文结果
  */
 const assembler = zeroChar => ({ text, zero }, data) => {
@@ -139,8 +139,8 @@ const numToChinese = numbers =>
     )
   )
     .reverse()
-    .reduce(assembler(Dictionary["digits"][0]), { text: "", zero: true });
-// .total;
+    .reduce(assembler(Dictionary["digits"][0]), { text: "", zero: true })
+    .text;
 
 console.log(numToChinese("10000000040"));
 
