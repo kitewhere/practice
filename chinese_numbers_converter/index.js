@@ -3,35 +3,8 @@
  */
 
 import Maybe from "./maybe";
-
-/**
- *  中文字典
- *
- *  @type {Object}
- */
-const Dictionary = {
-  digits: ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"],
-  units: ["十", "百", "千"],
-  quots: ["万", "亿", "兆", "京", "垓", "秭", "穰", "沟", "涧", "正", "载", "极", "恒河沙", "阿僧祗", "那由他", "不可思议", "无量", "大数"]
-};
-
-/**
- *  将函数绑定到对象上
- *
- *  @param  {*} obj 调用函数的对象
- *  @param  {function} func 被对象调用的函数
- *  @return {function}     绑定了对象的新函数
- */
-const bindTo = obj => func => func.bind(obj);
-
-/**
- *  组合函数
- *
- *  @param  {...[function]} funcs) 函数
- *  @return {[type]}           [description]
- */
-const compose = (...funcs) => (...args) =>
-  funcs.reduce((ret, func) => func(ret), args);
+import ChineseDict from './dict/Chinese';
+import {isNumber, pairMap, reduce, join, reverse, map} from './lib';
 
 /**
  *  从右向左计算下标
@@ -40,7 +13,7 @@ const compose = (...funcs) => (...args) =>
  *  @param  {number} index  正序下标
  *  @return {number}        倒序下标
  */
-const reverseIndex = length => index => length - index - 1;
+const reverseIndex = (length, index) => length - index - 1;
 
 /**
  *  将队列的下标转换为矩阵的行列坐标
@@ -50,7 +23,7 @@ const reverseIndex = length => index => length - index - 1;
  *  @return {function} 根据下标技术含量坐标的函数
  */
 const matrixer = (cols, indexChanger) => ([num, index, queue]) => {
-  const newIndex = indexChanger ? indexChanger(index) : index;
+  const newIndex = indexChanger ? indexChanger(num.length, index) : index;
   return {
     num,
     index,
@@ -59,7 +32,6 @@ const matrixer = (cols, indexChanger) => ([num, index, queue]) => {
     queue
   };
 };
-
 
 /**
  *  验证权位是否都是0
@@ -122,26 +94,63 @@ const assembler = zeroChar => ({ text, zero }, data) => {
 };
 
 /**
- * 转换阿拉伯数字到中文
+ *  处理整数部分
  *
- *  @param  {mixed} numbers 阿拉伯数字 可以是数字或字符串
+ *  @param  {string} dict   转换字典
  *  @return {string}        结果中文
- *
- *  @example
- *    console.log(numToChinese("10010010011"));  // 十亿零二百万零三百零四
  */
-const numToChinese = numbers =>
-  bindTo(numbers)(Array.prototype.map)(
-    compose(
-      matrixer(4, reverseIndex(numbers.length)),
-      checkSection(4),
-      translator(Dictionary)
-    )
-  )
-    .reverse()
-    .reduce(assembler(Dictionary["digits"][0]), { text: "", zero: true })
-    .text;
+const handleInteger = dict => compose(
+  map(compose(
+    matrixer(4, reverseIndex),
+    checkSection(4),
+    translator(dict)
+  )),
+  reverse,
+  reduce(assembler(dict.zero), { text: "", zero: true }),
+  result => result.text || dict.zero
+);
 
-console.log(numToChinese("10000000040"));
+/**
+ *  处理小数部分
+ *
+ *  @param  {number} numbers 小数部分的数字
+ *  @return {string}         字符串
+ */
+const handleDecimal = dict => numbers => numbers === undefined
+    ? ''
+    : dict.point + map(numbers)(num => dict.digits[num]);
 
-// export default numToChinese;
+/**
+ *  处理负号
+ *
+ *  @param  {bool} minus 是否是负号
+ *  @return {string}       字符串
+ */
+const handleMinus = dict => isMinus => isMinus ? dict.minus : '';
+
+/**
+ *  把字符串解析为 符号 整数 小数 三个部分
+ *
+ *  @param  {string} numbers 数字字符串
+ *  @return {array}       
+ */
+const parserNumbers = numbers => {
+  const isMinus = numbers.indexOf('-') !== 0 
+    ? false
+    : +(numbers = numbers.slice(1)) || true
+
+  const [integer, decimal] = numbers.split('.');
+
+  return [ isMinus, integer, decimal ];
+}
+
+/**
+  *  阿拉伯数字转中文 支持小数和负数
+  *
+  *  @param  {string} numbers 数字
+  *  @param  {object} dict    转换字典
+  *  @return {string}         中文数字
+  */ 
+const numToChinese = (numbers, dict=Dictionary) => compose(parserNumbers, pairMap([ handleMinus, handleInteger, handleDecimal ])(dict), join)(numbers);
+
+
