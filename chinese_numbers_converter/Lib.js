@@ -5,13 +5,14 @@
  *  @param  {function} func 被对象调用的函数
  *  @return {function}     绑定了对象的新函数
  */
-const bind = func => (...args) => obj => func.bind(obj, ...args);
+const bind = (func, ...args) => obj => func.bind(obj, ...args);
 
-const map = bind(Array.prototype.map)();
-const reverse = bind(Array.prototype.reverse)();
-const join = bind(Array.prototype.join)('');
+const map = bind(Array.prototype.map);
 const reduce = bind(Array.prototype.reduce);
-const regTest = bind(RegExp.prototype.test);
+const slice = bind(Array.prototype.slice);
+const some = bind(Array.prototype.some);
+const join = bind(Array.prototype.join);
+const reverse = bind(Array.prototype.reverse);
 
 /**
  *  判断是否合法数字
@@ -19,7 +20,7 @@ const regTest = bind(RegExp.prototype.test);
  *  @param  {string} numbers 数字字符串
  *  @return {bool}         
  */
-const isNumber = regTest(/^-?[0-9]+(\.[0-9]*)?$/);
+const isNumber = bind(RegExp.prototype.test)(/^-?[0-9]+(\.[0-9]*)?$/);
 
 /**
  *  配对处理 map 

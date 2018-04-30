@@ -15,6 +15,13 @@ import {isNumber, pairMap, reduce, join, reverse, map} from './lib';
  */
 const reverseIndex = (length, index) => length - index - 1;
 
+
+const matrixe = index => ({
+  num, index, queue,
+  row: Math.trunc(newIndex / cols),
+  col: newIndex % cols,
+});
+
 /**
  *  将队列的下标转换为矩阵的行列坐标
  *
@@ -22,16 +29,8 @@ const reverseIndex = (length, index) => length - index - 1;
  *  @param  {function}   indexChanger  坐标转换函数,决定矩阵如何排列
  *  @return {function} 根据下标技术含量坐标的函数
  */
-const matrixer = (cols, indexChanger) => ([num, index, queue]) => {
-  const newIndex = indexChanger ? indexChanger(num.length, index) : index;
-  return {
-    num,
-    index,
-    row: Math.trunc(newIndex / cols),
-    col: newIndex % cols,
-    queue
-  };
-};
+const matrixer = (cols, indexChanger) => ([num, index, queue]) => 
+  matrixe(indexChanger ? indexChanger(num.length, index) : index)
 
 /**
  *  验证权位是否都是0
@@ -39,18 +38,16 @@ const matrixer = (cols, indexChanger) => ([num, index, queue]) => {
  *  @param  {number} length 权位的个数
  *  @return {function}      验证函数如果成功返回 maybe.just, 否则返回 maybe.nothing
  */
-const checkSection = length => ({ num, index, row, col, queue }) => {
-  if (num === "0" && col === 0) {
-    for (let i = 1; i < length; i++) {
-      if (queue[index - i] !== "0") {
-        return Maybe.Just({ num, index, row, col });
-      }
-    }
-
-    return Maybe.Nothing();
-  }
-  return Maybe.Just({ num, index, row, col });
-};
+const checkSection = length => ({ num, index, row, col, queue }) =>
+  (
+    num === "0" && col === 0 &&
+    compose(
+      slice((start = index - length + 1) < 0 ? 0 : start, index),
+      some(x => x !== 0)
+    )(queue)
+  ) 
+    ? Maybe.Just({ num, index, row, col }) 
+    : Maybe.Nothing();
 
 /**
  *  根据字典翻译数字
@@ -151,6 +148,14 @@ const parserNumbers = numbers => {
   *  @param  {object} dict    转换字典
   *  @return {string}         中文数字
   */ 
-const numToChinese = (numbers, dict=Dictionary) => compose(parserNumbers, pairMap([ handleMinus, handleInteger, handleDecimal ])(dict), join)(numbers);
+const numToChinese = (numbers, dict=Dictionary) => compose(
+  parserNumbers, 
+  pairMap([ 
+    handleMinus, 
+    handleInteger, 
+    handleDecimal 
+  ])(dict), 
+  join
+)(numbers);
 
 
